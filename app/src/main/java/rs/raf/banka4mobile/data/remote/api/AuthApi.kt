@@ -7,8 +7,9 @@ import rs.raf.banka4mobile.data.remote.dto.LoginResponseDto
 
 interface AuthApi {
 
-    @POST("/api/auth/login")
+    @POST("auth/login")
     suspend fun login(
         @Body request: LoginRequestDto
     ): LoginResponseDto
+
 }

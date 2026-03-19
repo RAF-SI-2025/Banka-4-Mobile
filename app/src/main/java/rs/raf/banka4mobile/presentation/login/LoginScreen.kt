@@ -75,7 +75,7 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Lozinka") },
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation()
+//                visualTransformation = PasswordVisualTransformation()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
