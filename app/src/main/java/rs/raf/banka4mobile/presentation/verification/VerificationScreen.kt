@@ -102,12 +102,31 @@ fun VerificationScreen(
                     )
                 }
 
-                TotpDigitsRow(
-                    totp = state.totp,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .offset(y = 20.dp)
-                )
+                when {
+                    state.isLoading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center),
+                            color = GradientColor
+                        )
+                    }
+
+                    state.error != null -> {
+                        Text(
+                            text = state.error?.message ?: "Greška pri učitavanju koda",
+                            color = Color(0xFFB3261E),
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+
+                    else -> {
+                        TotpDigitsRow(
+                            totp = state.totp,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .offset(y = 20.dp)
+                        )
+                    }
+                }
             }
         }
     }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -11,13 +12,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import rs.raf.banka4mobile.domain.repository.AuthRepository
 import rs.raf.banka4mobile.feature.verification.TOTPGenerator
 import rs.raf.banka4mobile.presentation.verification.VerificationContract.SideEffect
 import rs.raf.banka4mobile.presentation.verification.VerificationContract.UiState
 
 @HiltViewModel
 class VerificationViewModel @Inject constructor(
-    // repository
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UiState())
@@ -27,16 +29,55 @@ class VerificationViewModel @Inject constructor(
     private val _sideEffects = MutableSharedFlow<SideEffect>()
     val sideEffects = _sideEffects.asSharedFlow()
 
-    // Dummy secret for testing
     private val codeValiditySeconds = 30L
-    private val totpGenerator = TOTPGenerator(
-        secretBase32 = "7A2VVUBSKMI7J2OSNMBJ3GG7WVZA77N5",
-        timeStepSeconds = codeValiditySeconds
-    )
+    private var totpGenerator: TOTPGenerator? = null
     private var lastTimeStep: Long? = null
+    private var tickerJob: Job? = null
 
     init {
         viewModelScope.launch {
+            loadSecretAndStartTicker()
+        }
+    }
+
+    private suspend fun loadSecretAndStartTicker() {
+        setState { copy(isLoading = true, error = null) }
+
+        authRepository.getSecretMobile()
+            .onSuccess { secret ->
+                runCatching {
+                    TOTPGenerator(
+                        secretBase32 = secret,
+                        timeStepSeconds = codeValiditySeconds
+                    )
+                }.onSuccess { generator ->
+                    totpGenerator = generator
+                    setState { copy(isLoading = false, error = null) }
+                    startTicker()
+                }.onFailure { error ->
+                    setState {
+                        copy(
+                            isLoading = false,
+                            error = error,
+                            totp = ""
+                        )
+                    }
+                }
+            }
+            .onFailure { error ->
+                setState {
+                    copy(
+                        isLoading = false,
+                        error = error,
+                        totp = ""
+                    )
+                }
+            }
+    }
+
+    private fun startTicker() {
+        tickerJob?.cancel()
+        tickerJob = viewModelScope.launch {
             while (true) {
                 val epochSeconds = System.currentTimeMillis() / 1000
                 val currentTimeStep = epochSeconds / codeValiditySeconds
@@ -51,17 +92,15 @@ class VerificationViewModel @Inject constructor(
                     }
                 }
 
-                // Backend may accept recently generated codes for up to 5 minutes,
-                // but UI should show canonical 30s TOTP rotation.
                 setState { copy(secondsLeft = secondsLeft) }
-
                 delay(1000)
             }
         }
     }
 
     private fun generateNewCode() {
-        val totp = totpGenerator.generate()
+        val generator = totpGenerator ?: return
+        val totp = generator.generate()
         setState { copy(totp = totp) }
     }
 }
