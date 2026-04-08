@@ -1,0 +1,40 @@
+package rs.raf.banka4mobile.data.remote.api
+
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.Path
+import rs.raf.banka4mobile.data.remote.dto.AccountCardsResponseDto
+import rs.raf.banka4mobile.data.remote.dto.AccountDetailsDto
+import rs.raf.banka4mobile.data.remote.dto.AccountSummaryDto
+import rs.raf.banka4mobile.data.remote.dto.PaymentsResponseDto
+
+interface BankingApi {
+
+    @GET("clients/{clientId}/accounts")
+    suspend fun getAccounts(
+        @Header("Authorization") authorization: String,
+        @Path("clientId") clientId: Int
+    ): List<AccountSummaryDto>
+
+    @GET("clients/{clientId}/accounts/{accountNumber}")
+    suspend fun getAccountDetails(
+        @Header("Authorization") authorization: String,
+        @Path("clientId") clientId: Int,
+        @Path("accountNumber") accountNumber: String
+    ): AccountDetailsDto
+
+    @GET("clients/{clientId}/accounts/{accountNumber}/cards")
+    suspend fun getCards(
+        @Header("Authorization") authorization: String,
+        @Path("clientId") clientId: Int,
+        @Path("accountNumber") accountNumber: String
+    ): AccountCardsResponseDto
+
+    @GET("clients/{clientId}/accounts/{accountNumber}/payments")
+    suspend fun getPayments(
+        @Header("Authorization") authorization: String,
+        @Path("clientId") clientId: Int,
+        @Path("accountNumber") accountNumber: String
+    ): PaymentsResponseDto
+}
+
