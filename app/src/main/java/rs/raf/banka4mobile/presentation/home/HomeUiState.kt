@@ -7,7 +7,9 @@ interface HomeContract {
         val errorMessage: String? = null,
         val accounts: List<AccountItem> = emptyList(),
         val selectedAccountIndex: Int = 0,
-        val transactions: List<TransactionItem> = emptyList()
+        val transactions: List<TransactionItem> = emptyList(),
+        val isInfoDialogVisible: Boolean = false,
+        val accountDetails: AccountDetailsItem? = null
     ) {
         val selectedAccount: AccountItem?
             get() = accounts.getOrNull(selectedAccountIndex)
@@ -15,10 +17,24 @@ interface HomeContract {
 
     data class AccountItem(
         val id: String,
+        val name: String,
         val accountType: String,
+        val accountKind: String,
         val accountNumber: String,
         val balance: Double,
+        val availableBalance: Double,
+        val reservedFunds: Double,
         val currency: String
+    )
+
+    data class AccountDetailsItem(
+        val dailyLimit: Double,
+        val monthlyLimit: Double,
+        val dailySpending: Double,
+        val monthlySpending: Double,
+        val reservedFunds: Double,
+        val accountType: String,
+        val accountKind: String
     )
 
     enum class TransactionType {
@@ -40,6 +56,8 @@ interface HomeContract {
         data object NextAccountClicked : UiEvent()
         data object OpenCardsClicked : UiEvent()
         data object CreditInstallmentClicked : UiEvent()
+        data object OpenInfoClicked : UiEvent()
+        data object DismissInfoClicked : UiEvent()
     }
 
     sealed class SideEffect {

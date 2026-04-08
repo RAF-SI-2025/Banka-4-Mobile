@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
+import rs.raf.banka4mobile.domain.model.home.BankAccountDetails
 import rs.raf.banka4mobile.domain.model.home.BankAccountSummary
 import rs.raf.banka4mobile.domain.model.home.BankPayment
 import rs.raf.banka4mobile.domain.repository.HomeRepository
@@ -36,6 +37,8 @@ class HomeViewModel @Inject constructor(
             UiEvent.NextAccountClicked -> nextAccount()
             UiEvent.OpenCardsClicked -> openCards()
             UiEvent.CreditInstallmentClicked -> onCreditInstallmentClicked()
+            UiEvent.OpenInfoClicked -> setState { copy(isInfoDialogVisible = true) }
+            UiEvent.DismissInfoClicked -> setState { copy(isInfoDialogVisible = false) }
         }
     }
 
@@ -70,7 +73,8 @@ class HomeViewModel @Inject constructor(
                                 isLoading = false,
                                 errorMessage = "Nema dostupnih racuna za prikaz.",
                                 accounts = emptyList(),
-                                transactions = emptyList()
+                                transactions = emptyList(),
+                                accountDetails = null
                             )
                         }
                         return@launch
@@ -80,6 +84,9 @@ class HomeViewModel @Inject constructor(
                     val payments = homeRepository
                         .getPayments(accountNumber = selectedAccount.accountNumber)
                         .getOrDefault(emptyList())
+                    val details = homeRepository
+                        .getAccountDetails(accountNumber = selectedAccount.accountNumber)
+                        .getOrNull()
 
                     setState {
                         copy(
@@ -87,7 +94,8 @@ class HomeViewModel @Inject constructor(
                             errorMessage = null,
                             accounts = accounts.map { it.toUiAccount() },
                             selectedAccountIndex = 0,
-                            transactions = payments.toUiTransactions(selectedAccount.accountNumber)
+                            transactions = payments.toUiTransactions(selectedAccount.accountNumber),
+                            accountDetails = details?.toUiDetails()
                         )
                     }
                 }
@@ -120,6 +128,20 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private fun loadDetailsForSelectedAccount() {
+        val selectedAccount = state.value.selectedAccount ?: return
+
+        viewModelScope.launch {
+            homeRepository.getAccountDetails(accountNumber = selectedAccount.accountNumber)
+                .onSuccess { details ->
+                    setState { copy(accountDetails = details.toUiDetails()) }
+                }
+                .onFailure {
+                    setState { copy(accountDetails = null) }
+                }
+        }
+    }
+
     private fun previousAccount() {
         val current = state.value
         if (current.isLoading || current.accounts.isEmpty()) return
@@ -132,11 +154,13 @@ class HomeViewModel @Inject constructor(
 
         setState {
             copy(
-                selectedAccountIndex = nextIndex
+                selectedAccountIndex = nextIndex,
+                isInfoDialogVisible = false
             )
         }
 
         loadTransactionsForSelectedAccount()
+        loadDetailsForSelectedAccount()
     }
 
     private fun nextAccount() {
@@ -151,20 +175,38 @@ class HomeViewModel @Inject constructor(
 
         setState {
             copy(
-                selectedAccountIndex = nextIndex
+                selectedAccountIndex = nextIndex,
+                isInfoDialogVisible = false
             )
         }
 
         loadTransactionsForSelectedAccount()
+        loadDetailsForSelectedAccount()
     }
 
     private fun BankAccountSummary.toUiAccount(): HomeContract.AccountItem {
         return HomeContract.AccountItem(
             id = accountNumber,
-            accountType = name,
+            name = name,
+            accountType = accountType,
+            accountKind = accountKind,
             accountNumber = accountNumber,
-            balance = availableBalance,
+            balance = balance,
+            availableBalance = availableBalance,
+            reservedFunds = reservedFunds,
             currency = currency
+        )
+    }
+
+    private fun BankAccountDetails.toUiDetails(): HomeContract.AccountDetailsItem {
+        return HomeContract.AccountDetailsItem(
+            dailyLimit = dailyLimit,
+            monthlyLimit = monthlyLimit,
+            dailySpending = dailySpending,
+            monthlySpending = monthlySpending,
+            reservedFunds = reservedFunds,
+            accountType = accountType,
+            accountKind = accountKind
         )
     }
 
