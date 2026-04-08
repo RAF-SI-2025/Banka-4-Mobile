@@ -3,6 +3,7 @@ package rs.raf.banka4mobile.data.remote.api
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Path
+import retrofit2.http.Query
 import rs.raf.banka4mobile.data.remote.dto.AccountCardsResponseDto
 import rs.raf.banka4mobile.data.remote.dto.AccountDetailsDto
 import rs.raf.banka4mobile.data.remote.dto.AccountSummaryDto
@@ -34,7 +35,9 @@ interface BankingApi {
     suspend fun getPayments(
         @Header("Authorization") authorization: String,
         @Path("clientId") clientId: Int,
-        @Path("accountNumber") accountNumber: String
+        @Path("accountNumber") accountNumber: String,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 10
     ): PaymentsResponseDto
 }
 

@@ -3,13 +3,15 @@ package rs.raf.banka4mobile.presentation.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
+import rs.raf.banka4mobile.domain.model.home.BankAccountSummary
+import rs.raf.banka4mobile.domain.model.home.BankPayment
+import rs.raf.banka4mobile.domain.repository.HomeRepository
 import rs.raf.banka4mobile.presentation.home.HomeContract.SideEffect
 import rs.raf.banka4mobile.presentation.home.HomeContract.UiEvent
 import rs.raf.banka4mobile.presentation.home.HomeContract.UiState
@@ -17,7 +19,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-
+    private val homeRepository: HomeRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UiState())
@@ -58,22 +60,63 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             setState { copy(isLoading = true, errorMessage = null) }
-            try {
-                // Mock podaci dok ne povezes prave API rute.
-                delay(200)
-                setState {
-                    copy(
-                        accounts = mockAccounts(),
-                        transactions = mockTransactions(),
-                        selectedAccountIndex = 0,
-                        errorMessage = null
-                    )
+            val accountsResult = homeRepository.getAccounts()
+
+            accountsResult
+                .onSuccess { accounts ->
+                    if (accounts.isEmpty()) {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                errorMessage = "Nema dostupnih racuna za prikaz.",
+                                accounts = emptyList(),
+                                transactions = emptyList()
+                            )
+                        }
+                        return@launch
+                    }
+
+                    val selectedAccount = accounts.first()
+                    val payments = homeRepository
+                        .getPayments(accountNumber = selectedAccount.accountNumber)
+                        .getOrDefault(emptyList())
+
+                    setState {
+                        copy(
+                            isLoading = false,
+                            errorMessage = null,
+                            accounts = accounts.map { it.toUiAccount() },
+                            selectedAccountIndex = 0,
+                            transactions = payments.toUiTransactions(selectedAccount.accountNumber)
+                        )
+                    }
                 }
-            } catch (e: Exception) {
-                setState { copy(errorMessage = "Greska pri ucitavanju podataka: ${e.message}") }
-            } finally {
-                setState { copy(isLoading = false) }
-            }
+                .onFailure { throwable ->
+                    setState {
+                        copy(
+                            isLoading = false,
+                            errorMessage = throwable.message ?: "Greska pri ucitavanju podataka."
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun loadTransactionsForSelectedAccount() {
+        val selectedAccount = state.value.selectedAccount ?: return
+
+        viewModelScope.launch {
+            homeRepository.getPayments(accountNumber = selectedAccount.accountNumber)
+                .onSuccess { payments ->
+                    setState {
+                        copy(
+                            transactions = payments.toUiTransactions(selectedAccount.accountNumber)
+                        )
+                    }
+                }
+                .onFailure {
+                    setState { copy(transactions = emptyList()) }
+                }
         }
     }
 
@@ -92,6 +135,8 @@ class HomeViewModel @Inject constructor(
                 selectedAccountIndex = nextIndex
             )
         }
+
+        loadTransactionsForSelectedAccount()
     }
 
     private fun nextAccount() {
@@ -109,65 +154,46 @@ class HomeViewModel @Inject constructor(
                 selectedAccountIndex = nextIndex
             )
         }
+
+        loadTransactionsForSelectedAccount()
     }
 
-    private fun mockAccounts(): List<HomeContract.AccountItem> {
-        return listOf(
-            HomeContract.AccountItem(
-                id = "tekuci",
-                accountType = "Tekuci racun",
-                accountNumber = "265-000000000001-11",
-                balance = 125430.52,
-                currency = "RSD"
-            ),
-            HomeContract.AccountItem(
-                id = "devizni",
-                accountType = "Devizni racun",
-                accountNumber = "265-000000000002-22",
-                balance = 2350.30,
-                currency = "EUR"
-            )
+    private fun BankAccountSummary.toUiAccount(): HomeContract.AccountItem {
+        return HomeContract.AccountItem(
+            id = accountNumber,
+            accountType = name,
+            accountNumber = accountNumber,
+            balance = availableBalance,
+            currency = currency
         )
     }
 
-    private fun mockTransactions(): List<HomeContract.TransactionItem> {
-        return listOf(
+    private fun List<BankPayment>.toUiTransactions(
+        selectedAccountNumber: String
+    ): List<HomeContract.TransactionItem> {
+        return map { payment ->
+            val isSent = payment.payerAccount == selectedAccountNumber
+            val transactionType = if (isSent) {
+                HomeContract.TransactionType.SENT
+            } else {
+                HomeContract.TransactionType.RECEIVED
+            }
+
+            val displayName = when {
+                payment.recipientName.isNotBlank() -> payment.recipientName
+                payment.purpose.isNotBlank() -> payment.purpose
+                isSent -> "Odliv"
+                else -> "Priliv"
+            }
+
             HomeContract.TransactionItem(
-                id = "tx-1",
-                name = "Plata",
-                amount = 1450.00,
-                currency = "EUR",
-                type = HomeContract.TransactionType.RECEIVED
-            ),
-            HomeContract.TransactionItem(
-                id = "tx-2",
-                name = "Racun za struju",
-                amount = 92.50,
-                currency = "EUR",
-                type = HomeContract.TransactionType.SENT
-            ),
-            HomeContract.TransactionItem(
-                id = "tx-3",
-                name = "Transfer od Jelene",
-                amount = 120.00,
-                currency = "EUR",
-                type = HomeContract.TransactionType.RECEIVED
-            ),
-            HomeContract.TransactionItem(
-                id = "tx-4",
-                name = "Kupovina - Market",
-                amount = 48.20,
-                currency = "EUR",
-                type = HomeContract.TransactionType.SENT
-            ),
-            HomeContract.TransactionItem(
-                id = "tx-5",
-                name = "Internet",
-                amount = 29.99,
-                currency = "EUR",
-                type = HomeContract.TransactionType.SENT
+                id = payment.id.toString(),
+                name = displayName,
+                amount = payment.amount,
+                currency = payment.currency,
+                type = transactionType
             )
-        )
+        }
     }
 
 }

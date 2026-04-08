@@ -98,7 +98,7 @@ fun AppNavigation() {
                     currentRoute = currentRoute,
                     onNavigate = { route ->
                         navController.navigate(route) {
-                            popUpTo(navController.graph.startDestinationId) {
+                            popUpTo(Screen.Home.route) {
                                 saveState = true
                             }
                             launchSingleTop = true
@@ -111,7 +111,7 @@ fun AppNavigation() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = Screen.Login.route,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Login.route) {
@@ -133,9 +133,7 @@ fun AppNavigation() {
             }
 
             composable(Screen.Verification.route) {
-                VerificationScreen(
-                    onBack = { navController.navigateToHome() }
-                )
+                VerificationScreen()
             }
         }
     }
@@ -195,5 +193,6 @@ fun NavController.navigateToHome() {
         popUpTo(Screen.Login.route) {
             inclusive = true
         }
+        launchSingleTop = true
     }
 }

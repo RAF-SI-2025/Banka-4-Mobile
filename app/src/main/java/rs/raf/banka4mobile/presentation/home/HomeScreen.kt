@@ -102,6 +102,7 @@ private fun HomeScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.White)
             .padding(horizontal = 20.dp)
     ) {
         when {
@@ -153,13 +154,29 @@ private fun HomeScreenContent(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(bottom = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        items(items = state.transactions, key = { it.id }) { transaction ->
-                            TransactionCard(transaction = transaction)
+                    if (state.transactions.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Nema izvrsenih placanja na ovom racunu.",
+                                color = Color(0xFF5A5A5A),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(bottom = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            items(items = state.transactions, key = { it.id }) { transaction ->
+                                TransactionCard(transaction = transaction)
+                            }
                         }
                     }
                 }
@@ -294,7 +311,13 @@ private fun TransactionCard(transaction: HomeContract.TransactionItem) {
             )
 
             Text(
-                text = "$amountPrefix${String.format(Locale.US, "%.2f", transaction.amount)} ${transaction.currency}",
+                text = "$amountPrefix${
+                    String.format(
+                        Locale.US,
+                        "%.2f",
+                        transaction.amount
+                    )
+                } ${transaction.currency}",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
                 color = amountColor,
