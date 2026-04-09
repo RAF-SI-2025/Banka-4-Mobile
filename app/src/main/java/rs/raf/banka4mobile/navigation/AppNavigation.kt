@@ -29,7 +29,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavType
 import androidx.navigation.NavController
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -81,6 +83,8 @@ private val bottomTabs = listOf(
 
 private val routesWithBottomBar = setOf(
     Screen.Home.route,
+    Screen.Cards.route,
+    Screen.Cards.routeWithArg,
     Screen.Verification.route
 )
 
@@ -97,12 +101,26 @@ fun AppNavigation() {
                 BottomNavigationBar(
                     currentRoute = currentRoute,
                     onNavigate = { route ->
-                        navController.navigate(route) {
-                            popUpTo(Screen.Home.route) {
-                                saveState = true
+                        if (route == Screen.Home.route) {
+                            val returnedToExistingHome = navController.popBackStack(
+                                route = Screen.Home.route,
+                                inclusive = false
+                            )
+
+                            if (!returnedToExistingHome) {
+                                navController.navigate(Screen.Home.route) {
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
-                            launchSingleTop = true
-                            restoreState = true
+                        } else {
+                            navController.navigate(route) {
+                                popUpTo(Screen.Home.route) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                 )
@@ -122,14 +140,23 @@ fun AppNavigation() {
 
             composable(Screen.Home.route) {
                 HomeScreen(
-                    onOpenCards = { navController.navigate(Screen.Cards.route) }
+                    onOpenCards = { accountNumber ->
+                        navController.navigate(Screen.Cards.createRoute(accountNumber))
+                    }
                 )
             }
 
-            composable(Screen.Cards.route) {
-                CardsScreen(
-                    onBack = { navController.popBackStack() }
+            composable(
+                route = Screen.Cards.routeWithArg,
+                arguments = listOf(
+                    navArgument(Screen.Cards.ACCOUNT_NUMBER_ARG) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
                 )
+            ) {
+                CardsScreen()
             }
 
             composable(Screen.Verification.route) {

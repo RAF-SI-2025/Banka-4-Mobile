@@ -45,8 +45,10 @@ class HomeViewModel @Inject constructor(
     private fun openCards() {
         if (state.value.isLoading) return
 
+        val accountNumber = state.value.selectedAccount?.accountNumber ?: return
+
         viewModelScope.launch {
-            _sideEffects.emit(SideEffect.NavigateToCards)
+            _sideEffects.emit(SideEffect.NavigateToCards(accountNumber))
         }
     }
 

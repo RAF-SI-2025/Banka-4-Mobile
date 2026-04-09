@@ -23,8 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Info
@@ -55,13 +53,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import rs.raf.banka4mobile.presentation.components.AccountSwitcherHeader
 import java.util.Locale
 
 private val GradientColor = Color(0xFF005EAD)
 
 @Composable
 fun HomeScreen(
-    onOpenCards: () -> Unit,
+    onOpenCards: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle().value
@@ -74,7 +73,7 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         viewModel.sideEffects.collect { sideEffect: HomeContract.SideEffect ->
             when (sideEffect) {
-                HomeContract.SideEffect.NavigateToCards -> onOpenCards()
+                is HomeContract.SideEffect.NavigateToCards -> onOpenCards(sideEffect.accountNumber)
                 is HomeContract.SideEffect.ShowToast -> {
                     Toast.makeText(context, sideEffect.message, Toast.LENGTH_SHORT).show()
                 }
@@ -124,7 +123,7 @@ private fun HomeScreenContent(
 
             state.errorMessage != null -> {
                 Text(
-                    text = "Greska pri ucitavanju: ${state.errorMessage}",
+                    text = state.errorMessage,
                     color = Color(0xFFB3261E),
                     modifier = Modifier.align(Alignment.Center)
                 )
@@ -139,10 +138,12 @@ private fun HomeScreenContent(
                         .imePadding()
                         .navigationBarsPadding()
                 ) {
-                    AccountSwitcher(
-                        selectedAccount = selectedAccount,
+                    AccountSwitcherHeader(
+                        accountName = selectedAccount.name,
+                        accountNumber = selectedAccount.accountNumber,
                         onPrevious = onPrevious,
-                        onNext = onNext
+                        onNext = onNext,
+                        accentColor = GradientColor
                     )
 
                     BalanceCircle(
@@ -206,64 +207,6 @@ private fun HomeScreenContent(
     }
 }
 
-@Composable
-private fun AccountSwitcher(
-    selectedAccount: HomeContract.AccountItem,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(onClick = onPrevious) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Prethodni racun",
-                    tint = GradientColor
-                )
-            }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = selectedAccount.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = GradientColor,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = selectedAccount.accountNumber,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF5A5A5A)
-                )
-            }
-
-            IconButton(onClick = onNext) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "Sledeci racun",
-                    tint = GradientColor
-                )
-            }
-        }
-
-        HorizontalDivider(
-            modifier = Modifier.padding(top = 8.dp),
-            thickness = 1.dp,
-            color = GradientColor.copy(alpha = 0.20f)
-        )
-    }
-}
 
 @Composable
 private fun ActionRow(
@@ -397,7 +340,7 @@ private fun BalanceCircle(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colorStops = arrayOf(
-                            0.30f to GradientColor.copy(alpha = 0.26f),
+                            0.20f to GradientColor.copy(alpha = 0.26f),
                             1.00f to Color.Transparent
                         ),
                         center = Offset(size.width / 2f, size.height / 2f),
@@ -432,8 +375,8 @@ private fun BalanceCircle(
                     modifier = Modifier.padding(
                         top = 4.dp,
                         bottom = 5.dp,
-                        start = 3.dp,
-                        end = 3.dp
+                        start = 13.dp,
+                        end = 13.dp
                     ),
                     thickness = 0.5.dp,
                     color = GradientColor.copy(alpha = 0.20f)

@@ -61,7 +61,7 @@ interface HomeContract {
     }
 
     sealed class SideEffect {
-        data object NavigateToCards : SideEffect()
+        data class NavigateToCards(val accountNumber: String) : SideEffect()
         data class ShowToast(val message: String) : SideEffect()
     }
 
