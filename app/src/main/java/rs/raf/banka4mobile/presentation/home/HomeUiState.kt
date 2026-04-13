@@ -10,10 +10,14 @@ interface HomeContract {
     sealed class UiEvent {
         data object ScreenOpened : UiEvent()
         data object OpenVerificationClicked : UiEvent()
+        data object OpenExchangeClicked : UiEvent()
+        data object OpenProfileClicked : UiEvent()
     }
 
     sealed class SideEffect {
         data object NavigateToVerification : SideEffect()
+        data object NavigateToExchange : SideEffect()
+        data object NavigateToProfile : SideEffect()
     }
 
 }

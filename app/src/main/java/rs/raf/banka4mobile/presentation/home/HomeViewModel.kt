@@ -30,6 +30,8 @@ class HomeViewModel @Inject constructor(
         when (event) {
             UiEvent.ScreenOpened -> fetchData()
             UiEvent.OpenVerificationClicked -> openVerification()
+            UiEvent.OpenExchangeClicked -> openExchange()
+            UiEvent.OpenProfileClicked -> openProfile()
         }
     }
 
@@ -41,13 +43,28 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private fun openExchange() {
+        if (state.value.isLoading) return
+
+        viewModelScope.launch {
+            _sideEffects.emit(SideEffect.NavigateToExchange)
+        }
+    }
+
+    private fun openProfile() {
+        if (state.value.isLoading) return
+
+        viewModelScope.launch {
+            _sideEffects.emit(SideEffect.NavigateToProfile)
+        }
+    }
+
     private fun fetchData() {
         if (state.value.isLoading) return
 
         viewModelScope.launch {
             setState { copy(isLoading = true, errorMessage = null) }
             try {
-                // TODO: Replace with real Home data loading (session/user data from repository).
                 setState { copy(isLoading = false) }
             } catch (e: Exception) {
                 setState { copy(errorMessage = "Greska pri ucitavanju podataka: ${e.message}") }
@@ -56,5 +73,4 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
-
 }
