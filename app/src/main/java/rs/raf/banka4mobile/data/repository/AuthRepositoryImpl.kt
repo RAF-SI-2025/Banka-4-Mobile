@@ -8,7 +8,6 @@ import rs.raf.banka4mobile.data.remote.dto.ApiErrorDto
 import rs.raf.banka4mobile.data.remote.dto.LoginRequestDto
 import rs.raf.banka4mobile.data.remote.dto.toDomain
 import rs.raf.banka4mobile.domain.model.Session
-import rs.raf.banka4mobile.domain.model.User
 import rs.raf.banka4mobile.domain.repository.AuthRepository
 import java.io.IOException
 import javax.inject.Inject
@@ -19,42 +18,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val json: Json
 ) : AuthRepository {
 
-    companion object {
-        /**
-         * MOCK LOGIN
-         *
-         * Kad je true:
-         * - ako uneseš dole definisan mock email i password, login će proći bez API-ja
-         * - za sve ostalo radiće normalna postojeća logika
-         *
-         * Kad završiš testiranje:
-         * - samo promeni na false
-         */
-        private const val ENABLE_MOCK_LOGIN = true
-
-        private const val MOCK_EMAIL = "client@test.com"
-        private const val MOCK_PASSWORD = "123456"
-
-        private val MOCK_SESSION = Session(
-            token = "mock-access-token",
-            refreshToken = "mock-refresh-token",
-            user = User(
-                id = 1,
-                email = MOCK_EMAIL,
-                firstName = "Petar",
-                lastName = "Petrović",
-                username = "petar.petrovic",
-                identityType = "client",
-                permissions = listOf("MOBILE_ACCESS", "VIEW_SECRET")
-            )
-        )
-    }
-
     override suspend fun login(email: String, password: String): Result<Session> {
-        if (ENABLE_MOCK_LOGIN && email == MOCK_EMAIL && password == MOCK_PASSWORD) {
-            return Result.success(MOCK_SESSION)
-        }
-
         return try {
             val response = authApi.login(
                 LoginRequestDto(
@@ -93,10 +57,6 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun getSecretMobile(): Result<String> {
         val token = sessionManager.getSession()?.token
             ?: return Result.failure(Exception("Nema aktivne sesije."))
-
-        if (ENABLE_MOCK_LOGIN && token == MOCK_SESSION.token) {
-            return Result.success("JBSWY3DPEHPK3PXP")
-        }
 
         return try {
             val response = authApi.getSecretMobile(authorization = "Bearer $token")
